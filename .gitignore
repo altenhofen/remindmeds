@@ -30,9 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (keep local values private; stage only the empty template)
 .env*
+!.env.example
 
+# local agent/tooling installations
+/.agents/
+/.claude/
 # vercel
 .vercel
 

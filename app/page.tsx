@@ -1,69 +1,16 @@
-import Image from "next/image";
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, Check, Clock3, Package, Pill, Plus, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+import { RouteShell } from "./components/route-shell";
+import { completeOnboarding, getOnboardingProfile } from "./onboarding/actions";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
-}
+type Med={id:string;name:string;dosage:string|null;form:string|null}; type Sch={id:string;medication_id:string;local_time:string;dose_amount:number;days_of_week:number[]}; type Dose={schedule_id:string;taken_at:string|null;status?:string}; type Inv={medication_id:string;quantity_change:number};
+export default function Home(){const router=useRouter();const supabase=useMemo(()=>createClient(),[]); const [step,setStep]=useState(0); const [user,setUser]=useState<{id:string}|null>(null);const [meds,setMeds]=useState<Med[]>([]);const [schedules,setSchedules]=useState<Sch[]>([]);const [events,setEvents]=useState<Dose[]>([]);const [inventory,setInventory]=useState<Inv[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);const [onboard,setOnboard]=useState(false);const [name,setName]=useState("");const [permission,setPermission]=useState("unknown");const [saving,setSaving]=useState(false);
+ const load=useCallback(async()=>{setLoading(true);const {data:a}=await supabase.auth.getUser();if(!a.user){setLoading(false);return}setUser({id:a.user.id});const day=new Date().getDay();const [m,s,d,i,p]=await Promise.all([supabase.from("medications").select("id,name,dosage,form").is("archived_at",null),supabase.from("medication_schedules").select("*").is("archived_at",null),supabase.from("dose_events").select("schedule_id,taken_at,status").gte("scheduled_for",new Date().toISOString().slice(0,10)),supabase.from("inventory_events").select("medication_id,quantity_change"),getOnboardingProfile()]);if(m.error||s.error||d.error||i.error)setError("We couldn't load today's plan. Please try again.");setMeds((m.data||[]) as Med[]);setSchedules(((s.data||[]) as Sch[]).filter(x=>x.days_of_week?.includes(day)));setEvents((d.data||[]) as Dose[]);setInventory((i.data||[]) as Inv[]);if(p.ok&&(!p.profile||!p.profile.onboarding_completed_at))setOnboard(true);setLoading(false)},[supabase]);useEffect(()=>{const timer=window.setTimeout(()=>{void load()},0);return()=>window.clearTimeout(timer)},[load]);
+ const doses=schedules.map(s=>{const med=meds.find(m=>m.id===s.medication_id)||{id:s.medication_id,name:"Medication",dosage:null,form:null};const stock=inventory.filter(i=>i.medication_id===s.medication_id).reduce((n,i)=>n+(i.quantity_change),0);return {...s,med,stock,taken:events.some(e=>e.schedule_id===s.id&&(e.taken_at||e.status==="taken"))}}).sort((a,b)=>a.local_time.localeCompare(b.local_time));
+ const take=async(d:typeof doses[number])=>{if(d.taken||!user)return;const {error:e}=await supabase.from("dose_events").insert({user_id:user.id,schedule_id:d.id,status:"taken",taken_at:new Date().toISOString(),scheduled_for:new Date().toISOString().slice(0,10)});if(e)setError("Could not mark that dose as taken.");else setEvents(x=>[...x,{schedule_id:d.id,taken_at:new Date().toISOString(),status:"taken"}])};const ask=async()=>{if(typeof Notification==="undefined")setPermission("unsupported");else setPermission(await Notification.requestPermission())};const finish=async()=>{setSaving(true);const r=await completeOnboarding({display_name:name,notification_permission:permission});if(!r.ok)setError(r.error);else{setOnboard(false);router.push("/medications")}setSaving(false)};
+ if(loading)return <RouteShell title="Today" eyebrow="Your routine" description="Stay on top of every dose."><div className="loading-state">Loading today’s plan…</div></RouteShell>;if(!user)return <RouteShell title="Today" eyebrow="Your routine" description="Stay on top of every dose."><section className="empty-card"><Pill/><h2>Sign in to see your plan</h2><Link href="/login?next=/" className="primary-button">Sign in</Link></section></RouteShell>;return <RouteShell title="Today" eyebrow={new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} description="A clear plan for feeling your best."><div className="space-y-6">{error&&<p role="alert" className="alert-card">{error}</p>}<section className="rounded-3xl bg-white p-6 shadow-sm"><div className="mb-5 flex justify-between"><div><p className="eyebrow">Next up</p><h2 className="text-2xl font-semibold">Your next dose today</h2></div><Clock3/></div>{doses.length?doses.map(d=><div key={d.id} className="flex items-center gap-3 border-b border-[var(--divider)] py-4"><Pill/><div className="flex-1"><b>{d.med.name}</b><p className="muted">{d.med.dosage||"Dose"} · {d.local_time.slice(0,5)}</p></div><span className="muted">{d.stock>0?`${d.stock} left`:"Low stock"}</span><button onClick={()=>void take(d)} disabled={d.taken} className={cn("secondary-button",d.taken&&"bg-[var(--teal-100)]") }><Check size={16}/>{d.taken?"Taken":"Mark as Taken"}</button></div>):<div className="empty-card border-0"><p>No doses scheduled today.</p><Link href="/medications" className="primary-button"><Plus size={16}/> Add medication</Link></div>}</section><section className="rounded-2xl border border-[var(--divider)] bg-white p-5"><Package/><b>Your privacy matters</b><p className="muted">Your medication data is securely scoped to your account.</p></section></div>{onboard&&<div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-4"><section className="w-full max-w-md rounded-3xl bg-white p-7"><div className="flex justify-between"><h2 className="text-2xl font-semibold">Welcome to RemindMeds</h2><X/></div>{step===0?<label className="mt-6 block">What should we call you?<input autoFocus value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"/></label>:<div className="mt-6 space-y-3"><Bell/><p className="muted">Allow notifications for helpful dose reminders.</p><button onClick={()=>void ask()} className="secondary-button">{permission==="unknown"?"Allow notifications":`Notifications ${permission}`}</button></div>}<button onClick={step===0?()=>setStep(1):()=>void finish()} disabled={(step===0&&!name)||saving} className="primary-button mt-6 w-full">{saving?"Saving…":step===0?"Continue":"Complete setup"}</button></section></div>}</RouteShell>}

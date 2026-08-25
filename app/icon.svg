@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">RemindMeds</title>
+  <desc id="desc">A teal capsule on a mint background</desc>
+  <rect width="64" height="64" rx="16" fill="#E6F4F1"/>
+  <g transform="rotate(-45 32 32)">
+    <rect x="18" y="10" width="28" height="44" rx="14" fill="#0B8B57"/>
+    <path d="M18 32h28v8a14 14 0 0 1-14 14 14 14 0 0 1-14-14v-8Z" fill="#1FA59A"/>
+    <path d="M18 32h28" stroke="#FAFAF8" stroke-width="2"/>
+  </g>
+</svg>
