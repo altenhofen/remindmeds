@@ -37,6 +37,7 @@ yarn-error.log*
 # local agent/tooling installations
 /.agents/
 /.claude/
+skills-lock.json
 # vercel
 .vercel
 
